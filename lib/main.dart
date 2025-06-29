@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart' show SharedPreferenc
 import 'homepage.dart';
 import 'login.dart';
 import 'theme_settings.dart';
+import 'splash_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -50,6 +51,11 @@ class _MyAppState extends State<MyApp> {
     });
   }
 
+  Future<Widget> _startupPageWithSplash() async {
+    await Future.delayed(const Duration(seconds: 2));
+    return await _startupPage();
+  }
+
   Future<Widget> _startupPage() async {
     final prefs = await SharedPreferences.getInstance();
     final loggedIn = prefs.getBool('loggedIn') ?? false;
@@ -72,10 +78,10 @@ class _MyAppState extends State<MyApp> {
         '/theme': (_) => ThemeSettingsPage(onThemeChanged: _updateTheme),
       },
       home: FutureBuilder(
-        future: _startupPage(),
+        future: _startupPageWithSplash(),
         builder: (context, snap) {
           if (snap.connectionState == ConnectionState.waiting) {
-            return const Scaffold(body: Center(child: CircularProgressIndicator()));
+            return const SplashScreen();
           }
           return snap.data!;
         },
