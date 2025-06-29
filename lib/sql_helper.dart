@@ -2,10 +2,11 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
 class SQLHelper {
+  // open (or create) the database
   static Future<Database> _db() async {
     return openDatabase(
       join(await getDatabasesPath(), 'diary.db'),
-      version: 2, // bump anytime you change schema
+      version: 2, // bump when you change schema
       onCreate: (db, v) async => db.execute('''
         CREATE TABLE diaries(
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -21,6 +22,7 @@ class SQLHelper {
     );
   }
 
+  // ───────── CRUD ─────────
   static Future<int> createDiary(String feeling, String desc) async {
     final db = await _db();
     return db.insert('diaries', {
@@ -52,5 +54,11 @@ class SQLHelper {
   static Future<void> deleteDiary(int id) async {
     final db = await _db();
     await db.delete('diaries', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // Clear EVERYTHING (“Delete account”)
+  static Future<void> clearAll() async {
+    final db = await _db();
+    await db.delete('diaries'); 
   }
 }

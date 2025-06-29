@@ -34,7 +34,7 @@ class _LoginPageState extends State<LoginPage> {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            Image.asset('assets/logo.png', width: 120, height: 120),
+            Image.asset('assets/logo-nb.png', width: 120, height: 120),
             const SizedBox(height: 20),
 
             TextField(controller: _userCtrl,
