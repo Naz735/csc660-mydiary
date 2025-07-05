@@ -15,8 +15,9 @@ class _LoginPageState extends State<LoginPage> {
   final _passCtrl = TextEditingController();
   String? _error;
 
+  /* 3(login.dart → _login()) for checking username/password and navigating to HomePage */
   Future<void> _login() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs      = await SharedPreferences.getInstance();
     final storedUser = prefs.getString('username');
     final storedPass = prefs.getString('password');
 
@@ -26,6 +27,7 @@ class _LoginPageState extends State<LoginPage> {
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, '/home');
     } else {
+      /* 4(login.dart → setState(_error)) for showing error message on login failure */
       setState(() => _error = 'Invalid username or password.');
     }
   }
@@ -43,19 +45,13 @@ class _LoginPageState extends State<LoginPage> {
             const SizedBox(height: 30),
             TextField(
               controller: _userCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Username',
-                border: OutlineInputBorder(),
-              ),
+              decoration: const InputDecoration(labelText: 'Username', border: OutlineInputBorder()),
             ),
             const SizedBox(height: 15),
             TextField(
               controller: _passCtrl,
               obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Password',
-                border: OutlineInputBorder(),
-              ),
+              decoration: const InputDecoration(labelText: 'Password', border: OutlineInputBorder()),
             ),
             if (_error != null)
               Padding(
@@ -65,24 +61,19 @@ class _LoginPageState extends State<LoginPage> {
             const SizedBox(height: 15),
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _login,
-                child: const Text('Login'),
-              ),
+              child: ElevatedButton(onPressed: _login, child: const Text('Login')),
             ),
             const SizedBox(height: 10),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 TextButton(
-                  onPressed: () => Navigator.push(
-                    context, MaterialPageRoute(builder: (_) => const RegisterPage())),
-                  child: const Text("Register")),
+                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RegisterPage())),
+                    child: const Text("Register")),
                 const Text('|'),
                 TextButton(
-                  onPressed: () => Navigator.push(
-                    context, MaterialPageRoute(builder: (_) => const ResetPwPage())),
-                  child: const Text("Forgot password?")),
+                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ResetPwPage())),
+                    child: const Text("Forgot password?")),
               ],
             ),
           ],

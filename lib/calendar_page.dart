@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:intl/intl.dart';
 import 'sql_helper.dart';
 
 class CalendarPage extends StatefulWidget {
@@ -27,12 +28,12 @@ class _CalendarPageState extends State<CalendarPage> {
     final data = await SQLHelper.getDiaries();
     final Map<DateTime, List<Map<String, dynamic>>> ev = {};
     for (var e in data) {
-      final dt = DateTime.parse(e['date']);
+      final dt  = DateTime.parse(e['date']);
       final key = DateTime(dt.year, dt.month, dt.day);
       ev.putIfAbsent(key, () => []).add(e);
     }
     setState(() {
-      _events = ev;
+      _events         = ev;
       _selectedEvents = ev[_selectedDay ?? _focusedDay] ?? [];
     });
   }
@@ -42,19 +43,37 @@ class _CalendarPageState extends State<CalendarPage> {
     return _events[key] ?? [];
   }
 
-  String _emoji(String feeling) {
-    final f = feeling.toLowerCase();
-    if (f.contains('happy')) return '😊';
-    if (f.contains('sad')) return '😢';
-    if (f.contains('angry')) return '😡';
+  String _emoji(String f) {
+    f = f.toLowerCase();
+    if (f.contains('happy'))   return '😊';
+    if (f.contains('sad'))     return '😢';
+    if (f.contains('angry'))   return '😡';
     if (f.contains('excited')) return '🤩';
     return '📝';
   }
 
-  Future<void> _openDetail(Map<String, dynamic> entry) async {
-    final id = entry['id'] as int;
-    final feelCtrl = TextEditingController(text: entry['feeling']);
-    final descCtrl = TextEditingController(text: entry['description']);
+  Future<void> _pickMonthYear() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _focusedDay,
+      firstDate : DateTime(2000),
+      lastDate  : DateTime(2100),
+      initialDatePickerMode: DatePickerMode.year,
+    );
+    if (picked != null) {
+      setState(() {
+        _focusedDay     = DateTime(picked.year, picked.month, 1);
+        _selectedDay    = _focusedDay;
+        _selectedEvents = _getEventsForDay(_focusedDay);
+      });
+    }
+  }
+
+  /* 18(calendar_page.dart → _openDetail()) for editing / deleting entry */
+  Future<void> _openDetail(Map<String, dynamic> e) async {
+    final id       = e['id'] as int;
+    final feelCtrl = TextEditingController(text: e['feeling']);
+    final descCtrl = TextEditingController(text: e['description']);
 
     await showDialog(
       context: context,
@@ -72,138 +91,131 @@ class _CalendarPageState extends State<CalendarPage> {
                   return ChoiceChip(
                     label: Text(m),
                     selected: sel,
-                    onSelected: (_) {
-                      feelCtrl.text = sel ? '' : m;
-                      setState(() {});
-                    },
+                    onSelected: (_) => setState(() => feelCtrl.text = sel ? '' : m),
                   );
                 }).toList(),
               ),
               const SizedBox(height: 12),
-              TextField(controller: descCtrl, maxLines: 4, decoration: const InputDecoration(labelText: 'Description')),
+              TextField(
+                controller: descCtrl,
+                maxLines: 4,
+                decoration: const InputDecoration(labelText: 'Description'),
+              ),
             ],
           ),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           TextButton(
+            child: const Text('Save'),
             onPressed: () async {
               await SQLHelper.updateDiary(id, feelCtrl.text, descCtrl.text);
               await _loadEvents();
-              if (!mounted) return;
-              Navigator.pop(ctx);
-            },
-            child: const Text('Save'),
-          ),
+              if (mounted) Navigator.pop(ctx);
+            }),
           TextButton(
+            style : TextButton.styleFrom(foregroundColor: Colors.red),
+            child : const Text('Delete'),
             onPressed: () async {
               await SQLHelper.deleteDiary(id);
               await _loadEvents();
-              if (!mounted) return;
-              Navigator.pop(ctx);
-            },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
-          ),
+              if (mounted) Navigator.pop(ctx);
+            }),
         ],
       ),
     );
   }
 
-  Future<void> _pickMonthYear() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _focusedDay,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-      initialDatePickerMode: DatePickerMode.year,
-    );
-    if (picked != null) {
-      setState(() {
-        _focusedDay = picked;
-        _selectedDay = picked;
-        _selectedEvents = _getEventsForDay(picked);
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
+    final scheme     = Theme.of(context).colorScheme;
+    final monthLabel = DateFormat.yMMMM().format(_focusedDay);
     return Scaffold(
       appBar: AppBar(title: const Text('Calendar')),
-      body: Column(
-        children: [
-          GestureDetector(
-            onTap: _pickMonthYear,
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              color: scheme.surfaceVariant,
-              width: double.infinity,
-              child: Center(
-                child: Text(
-                  '${_focusedDay.month}/${_focusedDay.year}',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+      body: RefreshIndicator(
+        onRefresh: _loadEvents,
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(icon: const Icon(Icons.chevron_left),
+                  onPressed: () => setState(() => _focusedDay = DateTime(_focusedDay.year, _focusedDay.month - 1))),
+                GestureDetector(
+                  onTap: _pickMonthYear,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Text(monthLabel, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  ),
                 ),
-              ),
+                IconButton(icon: const Icon(Icons.chevron_right),
+                  onPressed: () => setState(() => _focusedDay = DateTime(_focusedDay.year, _focusedDay.month + 1))),
+              ],
             ),
-          ),
-          TableCalendar(
-            focusedDay: _focusedDay,
-            firstDay: DateTime.utc(2020, 1, 1),
-            lastDay: DateTime.utc(2100, 12, 31),
-            eventLoader: _getEventsForDay,
-            selectedDayPredicate: (d) => isSameDay(_selectedDay, d),
-            onDaySelected: (sel, foc) {
-              setState(() {
-                _selectedDay = sel;
-                _focusedDay = foc;
-                _selectedEvents = _getEventsForDay(sel);
-              });
-            },
-            calendarStyle: CalendarStyle(
-              markerDecoration: BoxDecoration(
-                color: scheme.primary,
-                shape: BoxShape.circle,
-              ),
+            /* 16(calendar_page.dart → TableCalendar) for monthly view with markers */
+            TableCalendar(
+              focusedDay: _focusedDay,
+              firstDay : DateTime.utc(2020, 1, 1),
+              lastDay  : DateTime.utc(2100, 12, 31),
+              calendarFormat: CalendarFormat.month,
+              availableCalendarFormats: const {CalendarFormat.month: 'Month'},
+              headerVisible: false,
+              selectedDayPredicate: (d) => isSameDay(_selectedDay, d),
+              eventLoader: _getEventsForDay,
+              /* 17(calendar_page.dart → onDaySelected) for loading selected day’s entries */
+              onDaySelected: (sel, foc) {
+                setState(() {
+                  _selectedDay    = sel;
+                  _focusedDay     = foc;
+                  _selectedEvents = _getEventsForDay(sel);
+                });
+              },
+              onPageChanged: (foc) => setState(() => _focusedDay = foc),
+              calendarStyle: CalendarStyle(markerDecoration:
+                BoxDecoration(color: scheme.primary, shape: BoxShape.circle)),
             ),
-          ),
-          const Divider(),
-          Expanded(
-            child: _selectedEvents.isEmpty
-                ? const Center(child: Text('No entries'))
-                : ListView.builder(
-                    itemCount: _selectedEvents.length,
-                    itemBuilder: (ctx, i) {
-                      final e = _selectedEvents[i];
-                      return InkWell(
-                        onTap: () => _openDetail(e),
-                        child: Card(
-                          elevation: 3,
-                          margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: scheme.primaryContainer,
-                              child: Text(_emoji(e['feeling'])),
-                            ),
-                            title: Text(e['feeling']),
-                            subtitle: Text(
-                              e['description'],
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            trailing: Text(
-                              e['date'].toString().substring(11, 16),
-                              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            const Divider(height: 0),
+            Expanded(
+              child: _selectedEvents.isEmpty
+                  ? const Center(child: Text('No entries'))
+                  : ListView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      itemCount: _selectedEvents.length,
+                      itemBuilder: (ctx, i) {
+                        final e = _selectedEvents[i];
+                        /* 19(calendar_page.dart → Dismissible) for swipe delete in calendar list */
+                        return Dismissible(
+                          key: ValueKey(e['id']),
+                          direction: DismissDirection.endToStart,
+                          background: Container(
+                            alignment: Alignment.centerRight,
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            color: Colors.red,
+                            child: const Icon(Icons.delete, color: Colors.white),
+                          ),
+                          onDismissed: (_) async {
+                            await SQLHelper.deleteDiary(e['id']);
+                            await _loadEvents();
+                          },
+                          child: Card(
+                            margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+                            child: ListTile(
+                              onTap : () => _openDetail(e),
+                              leading: CircleAvatar(
+                                backgroundColor: scheme.primaryContainer,
+                                child: Text(_emoji(e['feeling']))),
+                              title : Text(e['feeling'], style: Theme.of(context).textTheme.titleMedium),
+                              subtitle: Text(e['description'], maxLines: 2, overflow: TextOverflow.ellipsis),
+                              trailing: Text(e['date'].toString().substring(11,16),
+                                  style: const TextStyle(fontSize: 12, color: Colors.grey)),
                             ),
                           ),
-                        ),
-                      );
-                    },
-                  ),
-          ),
-        ],
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }

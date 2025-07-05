@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart' show SharedPreferences;
-import 'homepage.dart';
 import 'login.dart';
+import 'homepage.dart';
 import 'theme_settings.dart';
 import 'splash_screen.dart';
 
-void main() {
-  runApp(const MyApp());
-}
+void main() => runApp(const MyApp());
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
@@ -17,49 +15,37 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   bool _isDark = false;
-  MaterialColor _themeColor = Colors.indigo;
+  MaterialColor _seed = Colors.indigo;
 
   @override
   void initState() {
     super.initState();
-    _loadTheme();
+    _loadPrefs();
   }
 
-  Future<void> _loadTheme() async {
+  Future<void> _loadPrefs() async {
     final prefs = await SharedPreferences.getInstance();
-    final isDark = prefs.getBool('isDark') ?? false;
-    final colorName = prefs.getString('themeColor') ?? 'Indigo';
-
-    final colorMap = {
+    final dark  = prefs.getBool('isDark') ?? false;
+    final name  = prefs.getString('themeColor') ?? 'Indigo';
+    const map = {
       'Indigo': Colors.indigo,
-      'Green': Colors.green,
-      'Teal': Colors.teal,
+      'Green' : Colors.green,
+      'Teal'  : Colors.teal,
       'Orange': Colors.orange,
       'Purple': Colors.purple,
     };
-
     setState(() {
-      _isDark = isDark;
-      _themeColor = colorMap[colorName] ?? Colors.indigo;
+      _isDark = dark;
+      _seed   = map[name] ?? Colors.indigo;
     });
   }
 
-  void _updateTheme(bool isDark, MaterialColor color) {
-    setState(() {
-      _isDark = isDark;
-      _themeColor = color;
-    });
-  }
-
-  Future<Widget> _startupPageWithSplash() async {
+  /* 1(main.dart → _firstPage()) for deciding whether to show LoginPage or HomePage after the splash screen */
+  Future<Widget> _firstPage() async {
     await Future.delayed(const Duration(seconds: 2));
-    return await _startupPage();
-  }
-
-  Future<Widget> _startupPage() async {
-    final prefs = await SharedPreferences.getInstance();
-    final loggedIn = prefs.getBool('loggedIn') ?? false;
-    return loggedIn ? const HomePage() : const LoginPage();
+    final prefs  = await SharedPreferences.getInstance();
+    final logged = prefs.getBool('loggedIn') ?? false;
+    return logged ? const HomePage() : const LoginPage();
   }
 
   @override
@@ -67,19 +53,25 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp(
       title: 'MyDiary',
       debugShowCheckedModeBanner: false,
+      /* 2(main.dart → ThemeData) for applying dark mode and seed color globally */
       theme: ThemeData(
-        colorSchemeSeed: _themeColor,
+        colorSchemeSeed: _seed,
         brightness: _isDark ? Brightness.dark : Brightness.light,
         useMaterial3: true,
       ),
       routes: {
         '/login': (_) => const LoginPage(),
-        '/home': (_) => const HomePage(),
-        '/theme': (_) => ThemeSettingsPage(onThemeChanged: _updateTheme),
+        '/home' : (_) => const HomePage(),
+        '/theme': (_) => ThemeSettingsPage(
+              onThemeChanged: (d, c) => setState(() {
+                _isDark = d;
+                _seed   = c;
+              }),
+            ),
       },
       home: FutureBuilder(
-        future: _startupPageWithSplash(),
-        builder: (context, snap) {
+        future: _firstPage(),
+        builder: (ctx, snap) {
           if (snap.connectionState == ConnectionState.waiting) {
             return const SplashScreen();
           }

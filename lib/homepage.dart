@@ -36,40 +36,37 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  // ─── Load diaries from DB ───
+  /* 9(homepage.dart → _refresh()) for loading diary entries from SQLite */
   Future<void> _refresh() async {
     _allDiaries = await SQLHelper.getDiaries();
     _applyFilter();
   }
 
-  // ─── Apply search & mood filter ───
+  /* 10(homepage.dart → _applyFilter()) for filtering list by mood or keyword */
   void _applyFilter() {
-    final query = _searchCtrl.text.toLowerCase();
+    final q = _searchCtrl.text.toLowerCase();
     setState(() {
       _diaries = _allDiaries.where((d) {
-        final feel = d['feeling'].toString().toLowerCase();
-        final desc = d['description'].toString().toLowerCase();
-        final okMood = _selectedFilter == 'All' ||
-            feel.contains(_selectedFilter.toLowerCase());
-        final okSearch =
-            query.isEmpty || feel.contains(query) || desc.contains(query);
+        final f   = d['feeling'].toString().toLowerCase();
+        final des = d['description'].toString().toLowerCase();
+        final okMood   = _selectedFilter == 'All' || f.contains(_selectedFilter.toLowerCase());
+        final okSearch = q.isEmpty || f.contains(q) || des.contains(q);
         return okMood && okSearch;
       }).toList();
       _loading = false;
     });
   }
 
-  // ─── Emoji helper ───
   String _emoji(String s) {
     s = s.toLowerCase();
     if (s.contains('happy')) return '😊';
-    if (s.contains('sad')) return '😢';
+    if (s.contains('sad'))   return '😢';
     if (s.contains('angry')) return '😡';
     if (s.contains('excited')) return '🤩';
     return '📝';
   }
 
-  // ─── Create / Update entry ───
+  /* 13(homepage.dart → _showForm()) for bottom‑sheet create / edit diary */
   Future<void> _showForm([int? id]) async {
     if (id != null) {
       final e = _allDiaries.firstWhere((d) => d['id'] == id);
@@ -79,44 +76,34 @@ class _HomePageState extends State<HomePage> {
       _feelCtrl.clear();
       _descCtrl.clear();
     }
-
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(25))),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(25))),
       builder: (ctx) => Padding(
         padding: EdgeInsets.only(
-          top: 20,
-          left: 20,
-          right: 20,
-          bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
-        ),
+          top: 20, left: 20, right: 20, bottom: MediaQuery.of(ctx).viewInsets.bottom + 20),
         child: StatefulBuilder(
           builder: (ctx, setSheet) => Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(id == null ? 'New Entry' : 'Update Entry',
-                  style:
-                      const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 20),
               TextField(
                 controller: _feelCtrl,
-                decoration: const InputDecoration(
-                    labelText: 'Feeling', border: OutlineInputBorder()),
-                onChanged: (_) => setSheet(() {}), // refresh chip highlight
+                decoration: const InputDecoration(labelText: 'Feeling', border: OutlineInputBorder()),
+                onChanged: (_) => setSheet(() {}),
               ),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 6,
                 children: _quickMoods.map((m) {
-                  final sel =
-                      _feelCtrl.text.toLowerCase() == m.toLowerCase();
+                  final sel = _feelCtrl.text.toLowerCase() == m.toLowerCase();
                   return ChoiceChip(
                     label: Text(m),
                     selected: sel,
-                    onSelected: (_) =>
-                        setSheet(() => _feelCtrl.text = sel ? '' : m),
+                    onSelected: (_) => setSheet(() => _feelCtrl.text = sel ? '' : m),
                   );
                 }).toList(),
               ),
@@ -124,8 +111,7 @@ class _HomePageState extends State<HomePage> {
               TextField(
                 controller: _descCtrl,
                 maxLines: 3,
-                decoration: const InputDecoration(
-                    labelText: 'Description', border: OutlineInputBorder()),
+                decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder()),
               ),
               const SizedBox(height: 20),
               ElevatedButton.icon(
@@ -134,14 +120,11 @@ class _HomePageState extends State<HomePage> {
                 onPressed: () async {
                   if (_feelCtrl.text.trim().isEmpty) return;
                   if (id == null) {
-                    await SQLHelper.createDiary(
-                        _feelCtrl.text.trim(), _descCtrl.text.trim());
+                    await SQLHelper.createDiary(_feelCtrl.text.trim(), _descCtrl.text.trim());
                   } else {
-                    await SQLHelper.updateDiary(
-                        id, _feelCtrl.text.trim(), _descCtrl.text.trim());
+                    await SQLHelper.updateDiary(id, _feelCtrl.text.trim(), _descCtrl.text.trim());
                   }
-                  if (!mounted) return;
-                  Navigator.pop(ctx);
+                  if (mounted && Navigator.of(context).canPop()) Navigator.pop(ctx);
                   _refresh();
                 },
               ),
@@ -155,8 +138,7 @@ class _HomePageState extends State<HomePage> {
   Future<void> _delete(int id) async {
     await SQLHelper.deleteDiary(id);
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Entry deleted')));
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Entry deleted')));
     _refresh();
   }
 
@@ -167,15 +149,12 @@ class _HomePageState extends State<HomePage> {
     Navigator.pushReplacementNamed(context, '/login');
   }
 
-  // ─── UI ───
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-
     return Scaffold(
       appBar: AppBar(
-        leading:
-            Padding(padding: const EdgeInsets.all(8), child: Image.asset('assets/logo-nb.png')),
+        leading: Padding(padding: const EdgeInsets.all(8), child: Image.asset('assets/logo-nb.png')),
         title: const Text('MyDiary'),
         backgroundColor: scheme.primary,
         foregroundColor: scheme.onPrimary,
@@ -183,26 +162,19 @@ class _HomePageState extends State<HomePage> {
           IconButton(
             icon: const Icon(Icons.calendar_today),
             tooltip: 'Calendar',
-            onPressed: () =>
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const CalendarPage())),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CalendarPage())),
           ),
+          /* 15(homepage.dart → PopupMenuButton) for logout or theme settings */
           PopupMenuButton<String>(
-            onSelected: (v) =>
-                v == 'theme' ? Navigator.pushNamed(context, '/theme') : _logout(),
+            onSelected: (v) => v == 'theme' ? Navigator.pushNamed(context, '/theme') : _logout(),
             itemBuilder: (_) => [
               const PopupMenuItem(
                 value: 'theme',
-                child: ListTile(
-                  leading: Icon(Icons.color_lens),
-                  title: Text('Theme & Dark mode'),
-                ),
+                child: ListTile(leading: Icon(Icons.color_lens), title: Text('Theme & Dark mode')),
               ),
               const PopupMenuItem(
                 value: 'logout',
-                child: ListTile(
-                  leading: Icon(Icons.logout),
-                  title: Text('Logout'),
-                ),
+                child: ListTile(leading: Icon(Icons.logout), title: Text('Logout')),
               ),
             ],
           ),
@@ -210,88 +182,86 @@ class _HomePageState extends State<HomePage> {
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                const SizedBox(height: 10),
-                // Filter chips
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  child: Row(
-                    children: ['All', ..._quickMoods].map((m) {
-                      final sel = _selectedFilter == m;
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 6),
-                        child: ChoiceChip(
-                          label: Text(m),
-                          selected: sel,
-                          onSelected: (_) {
-                            setState(() {
-                              _selectedFilter = sel ? 'All' : m;
-                            });
-                            _applyFilter();
-                          },
-                          selectedColor: scheme.primary,
-                          labelStyle: TextStyle(
-                              color:
-                                  sel ? scheme.onPrimary : scheme.onSurface),
-                        ),
-                      );
-                    }).toList(),
+          : RefreshIndicator(
+              onRefresh: _refresh,
+              child: Column(
+                children: [
+                  const SizedBox(height: 10),
+                  /* 11(homepage.dart → ChoiceChip row) for mood filters */
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    child: Row(
+                      children: ['All', ..._quickMoods].map((m) {
+                        final sel = _selectedFilter == m;
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                          child: ChoiceChip(
+                            label: Text(m),
+                            selected: sel,
+                            onSelected: (_) {
+                              setState(() => _selectedFilter = sel ? 'All' : m);
+                              _applyFilter();
+                            },
+                            selectedColor: scheme.primary,
+                            labelStyle: TextStyle(color: sel ? scheme.onPrimary : scheme.onSurface),
+                          ),
+                        );
+                      }).toList(),
+                    ),
                   ),
-                ),
-                // Search bar
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: TextField(
-                    controller: _searchCtrl,
-                    decoration: InputDecoration(
-                      hintText: 'Search diary...',
-                      prefixIcon: const Icon(Icons.search),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                  /* 12(homepage.dart → TextField search) for keyword filter */
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: TextField(
+                      controller: _searchCtrl,
+                      decoration: InputDecoration(
+                        hintText: 'Search diary...',
+                        prefixIcon: const Icon(Icons.search),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                     ),
                   ),
-                ),
-                const Divider(height: 0),
-                // Diary list
-                Expanded(
-                  child: _diaries.isEmpty
-                      ? const Center(child: Text('No diary entries found.'))
-                      : ListView.builder(
-                          itemCount: _diaries.length,
-                          itemBuilder: (ctx, i) {
-                            final d = _diaries[i];
-                            return Card(
-                              margin: const EdgeInsets.symmetric(
-                                  horizontal: 15, vertical: 8),
-                              child: ListTile(
-                                leading: CircleAvatar(
-                                  backgroundColor: scheme.primaryContainer,
-                                  child: Text(_emoji(d['feeling']),
-                                      style: const TextStyle(fontSize: 20)),
+                  const Divider(height: 0),
+                  Expanded(
+                    child: _diaries.isEmpty
+                        ? const Center(child: Text('No diary entries found.'))
+                        : ListView.builder(
+                            itemCount: _diaries.length,
+                            itemBuilder: (ctx, i) {
+                              final d = _diaries[i];
+                              /* 14(homepage.dart → Dismissible + ListTile) for swipe delete & tap edit */
+                              return Dismissible(
+                                key: ValueKey(d['id']),
+                                background: Container(
+                                  alignment: Alignment.centerRight,
+                                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                                  color: Colors.red,
+                                  child: const Icon(Icons.delete, color: Colors.white),
                                 ),
-                                title: Text(d['feeling']),
-                                subtitle: Text(d['description']),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    IconButton(
-                                        icon: const Icon(Icons.edit),
-                                        onPressed: () => _showForm(d['id'])),
-                                    IconButton(
-                                        icon: const Icon(Icons.delete,
-                                            color: Colors.red),
-                                        onPressed: () => _delete(d['id'])),
-                                  ],
+                                direction: DismissDirection.endToStart,
+                                onDismissed: (_) => _delete(d['id']),
+                                child: Card(
+                                  margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+                                  child: ListTile(
+                                    onTap: () => _showForm(d['id']),
+                                    leading: CircleAvatar(
+                                      backgroundColor: scheme.primaryContainer,
+                                      child: Text(_emoji(d['feeling']), style: const TextStyle(fontSize: 20)),
+                                    ),
+                                    title: Text(d['feeling'],
+                                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                            fontSize: 18, fontWeight: FontWeight.bold)),
+                                    subtitle: Text(d['description'],
+                                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 15)),
+                                  ),
                                 ),
-                              ),
-                            );
-                          },
-                        ),
-                ),
-              ],
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
             ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: scheme.primary,

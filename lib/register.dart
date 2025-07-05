@@ -8,11 +8,10 @@ class RegisterPage extends StatefulWidget {
 }
 
 class _RegisterPageState extends State<RegisterPage> {
-  final _userCtrl = TextEditingController();
-  final _passCtrl = TextEditingController();
+  final _userCtrl   = TextEditingController();
+  final _passCtrl   = TextEditingController();
   final _answerCtrl = TextEditingController();
 
-  // 🔽 Pre‑defined security questions
   final _securityQuestions = [
     "What is your pet's name?",
     "What is your mother's maiden name?",
@@ -22,24 +21,21 @@ class _RegisterPageState extends State<RegisterPage> {
 
   String? _selectedQuestion;
 
+  /* 6(register.dart → _register()) for saving new account and secret answer */
   Future<void> _register() async {
     if (_selectedQuestion == null || _answerCtrl.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a question and answer')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Please select a question and answer')));
       return;
     }
-
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('username', _userCtrl.text.trim());
     await prefs.setString('password', _passCtrl.text.trim());
     await prefs.setString('secret_question', _selectedQuestion!);
-    await prefs.setString(
-        'secret_answer', _answerCtrl.text.trim().toLowerCase());
+    await prefs.setString('secret_answer', _answerCtrl.text.trim().toLowerCase());
     await prefs.setBool('loggedIn', false);
-
     if (!mounted) return;
-    Navigator.pop(context); // back to Login
+    Navigator.pop(context);
   }
 
   @override
@@ -52,43 +48,25 @@ class _RegisterPageState extends State<RegisterPage> {
           children: [
             Image.asset('assets/logo-nb.png', width: 120, height: 120),
             const SizedBox(height: 20),
-
-            // Username & Password
-            TextField(
-              controller: _userCtrl,
-              decoration: const InputDecoration(labelText: 'Username'),
-            ),
+            TextField(controller: _userCtrl, decoration: const InputDecoration(labelText: 'Username')),
             TextField(
               controller: _passCtrl,
               obscureText: true,
               decoration: const InputDecoration(labelText: 'Password'),
             ),
             const SizedBox(height: 20),
-
-            // 🔽  Dropdown for Secret Question
+            /* 5(register.dart → DropdownButtonFormField) for choosing secret question */
             DropdownButtonFormField<String>(
               value: _selectedQuestion,
-              decoration:
-                  const InputDecoration(labelText: 'Select Secret Question'),
+              decoration: const InputDecoration(labelText: 'Select Secret Question'),
               items: _securityQuestions
-                  .map((q) => DropdownMenuItem(value: q, child: Text(q)))
-                  .toList(),
+                  .map((q) => DropdownMenuItem(value: q, child: Text(q))).toList(),
               onChanged: (val) => setState(() => _selectedQuestion = val),
             ),
-
-            // Secret Answer
-            TextField(
-              controller: _answerCtrl,
-              decoration: const InputDecoration(labelText: 'Secret Answer'),
-            ),
-
+            TextField(controller: _answerCtrl, decoration: const InputDecoration(labelText: 'Secret Answer')),
             const SizedBox(height: 20),
             ElevatedButton(onPressed: _register, child: const Text('Register')),
-
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Already have an account? Log in'),
-            ),
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Already have an account? Log in')),
           ],
         ),
       ),

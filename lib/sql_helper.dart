@@ -14,19 +14,19 @@ class SQLHelper {
           date TEXT)
       '''),
       onUpgrade: (db, oldV, newV) async {
-        if (oldV < 2) {
-          await db.execute('ALTER TABLE diaries ADD COLUMN date TEXT');
-        }
+        if (oldV < 2) await db.execute('ALTER TABLE diaries ADD COLUMN date TEXT');
       },
     );
   }
 
+  /* 23(sql_helper.dart → createDiary()) for adding a new diary row */
   static Future<int> createDiary(String feeling, String desc) async {
     final db = await _db();
     return db.insert('diaries', {
-      'feeling': feeling,
+      'feeling'    : feeling,
       'description': desc,
-      'date': DateTime.now().toString().substring(0, 16),
+      /* 24(sql_helper.dart → date field) for storing current timestamp */
+      'date'       : DateTime.now().toString().substring(0, 16),
     });
   }
 
@@ -40,9 +40,9 @@ class SQLHelper {
     return db.update(
       'diaries',
       {
-        'feeling': feeling,
+        'feeling'    : feeling,
         'description': desc,
-        'date': DateTime.now().toString().substring(0, 16),
+        'date'       : DateTime.now().toString().substring(0, 16),
       },
       where: 'id = ?',
       whereArgs: [id],
