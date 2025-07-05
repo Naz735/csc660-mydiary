@@ -3,7 +3,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class ThemeSettingsPage extends StatefulWidget {
   final Function(bool, MaterialColor) onThemeChanged;
-
   const ThemeSettingsPage({super.key, required this.onThemeChanged});
 
   @override
@@ -12,7 +11,7 @@ class ThemeSettingsPage extends StatefulWidget {
 
 class _ThemeSettingsPageState extends State<ThemeSettingsPage> {
   bool _isDark = false;
-  MaterialColor _selectedColor = Colors.indigo;
+  MaterialColor _seed = Colors.indigo;
 
   final _colors = {
     'Indigo': Colors.indigo,
@@ -30,52 +29,60 @@ class _ThemeSettingsPageState extends State<ThemeSettingsPage> {
 
   Future<void> _loadPrefs() async {
     final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _isDark = prefs.getBool('isDark') ?? false;
-      final colorName = prefs.getString('themeColor') ?? 'Indigo';
-      _selectedColor = _colors[colorName] ?? Colors.indigo;
-    });
+    _isDark = prefs.getBool('isDark') ?? false;
+    _seed = _colors[prefs.getString('themeColor') ?? 'Indigo'] ?? Colors.indigo;
+    setState(() {});
   }
 
-  Future<void> _savePrefs() async {
+  Future<void> _updateTheme({bool? dark, MaterialColor? color}) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('isDark', _isDark);
-    await prefs.setString('themeColor', _colors.entries.firstWhere((e) => e.value == _selectedColor).key);
-    widget.onThemeChanged(_isDark, _selectedColor);
+
+    if (dark != null) {
+      _isDark = dark;
+      await prefs.setBool('isDark', _isDark);
+    }
+
+    if (color != null) {
+      _seed = color;
+      final name = _colors.entries.firstWhere((e) => e.value == _seed).key;
+      await prefs.setString('themeColor', name);
+    }
+
+    widget.onThemeChanged(_isDark, _seed);
+    setState(() {}); // update UI preview instantly
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Theme Settings')),
+      appBar: AppBar(title: const Text('Theme & Dark Mode')),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
             SwitchListTile(
-              title: const Text("Dark Mode"),
+              title: const Text('Dark Mode'),
               value: _isDark,
-              onChanged: (val) {
-                setState(() => _isDark = val);
-                _savePrefs();
-              },
+              onChanged: (v) => _updateTheme(dark: v),
             ),
             const SizedBox(height: 20),
-            DropdownButtonFormField<MaterialColor>(
-              value: _selectedColor,
-              decoration: const InputDecoration(labelText: "Theme Color"),
-              items: _colors.entries.map((entry) {
-                return DropdownMenuItem(
-                  value: entry.value,
-                  child: Text(entry.key),
+            const Text('Seed Color', style: TextStyle(fontWeight: FontWeight.bold)),
+            Wrap(
+              spacing: 10,
+              children: _colors.entries.map((e) {
+                final selected = e.value == _seed;
+                return ChoiceChip(
+                  label: Text(e.key),
+                  selected: selected,
+                  onSelected: (_) => _updateTheme(color: e.value),
+                  selectedColor: e.value,
+                  labelStyle: TextStyle(
+                    color: selected
+                        ? Colors.white
+                        : Theme.of(context).colorScheme.onSurface,
+                  ),
                 );
               }).toList(),
-              onChanged: (val) {
-                if (val != null) {
-                  setState(() => _selectedColor = val);
-                  _savePrefs();
-                }
-              },
             ),
           ],
         ),
